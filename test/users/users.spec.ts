@@ -23,11 +23,11 @@ test.group('User', (group) => {
     }
     const { body } = await supertest(BASE_URL).post('/users').send(userPayload).expect(201)
 
+    console.log({ body })
     assert.exists(body.user, 'User undefined.')
     assert.exists(body.user.id, 'Id undefined.')
     assert.equal(body.user.email, userPayload.email)
     assert.equal(body.user.username, userPayload.username)
-    assert.equal(body.user.avatar, userPayload.avatar)
     assert.notExists(body.user.password, 'Password defined.')
   })
 
@@ -42,12 +42,12 @@ test.group('User', (group) => {
       })
       .expect(409)
 
-    console.log({ body })
     assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.message, 'email already in use.')
     assert.equal(body.status, 409)
   })
 
-  test.only('it should return 409 when username is already in use', async (assert) => {
+  test('it should return 409 when username is already in use', async (assert) => {
     const { username } = await UserFactory.create()
     const { body } = await supertest(BASE_URL)
       .post('/users')
@@ -58,8 +58,43 @@ test.group('User', (group) => {
       })
       .expect(409)
 
-    console.log({ body })
     assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.message, 'username already in use.')
     assert.equal(body.status, 409)
+  })
+
+  test('it should return 422 when require data is not provided', async (assert) => {
+    const { body } = await supertest(BASE_URL).post('/users').send({}).expect(422)
+
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
+  test('it should return 422 when providing an invalid email', async (assert) => {
+    const { body } = await supertest(BASE_URL)
+      .post('/users').send({
+        email: 'test@',
+        password: 'test',
+        username: 'test',
+      })
+      .expect(422)
+
+    console.log(JSON.stringify({ body }))
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
+  })
+
+  test('it should return 422 when providing an invalid password', async (assert) => {
+    const { body } = await supertest(BASE_URL)
+      .post('/users').send({
+        email: 'test@',
+        password: 'tes',
+        username: 'test',
+      })
+      .expect(422)
+
+    console.log(JSON.stringify({ body }))
+    assert.equal(body.code, 'BAD_REQUEST')
+    assert.equal(body.status, 422)
   })
 })
