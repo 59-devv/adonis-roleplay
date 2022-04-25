@@ -1,3 +1,4 @@
+import Hash from '@ioc:Adonis/Core/Hash'
 import Database from '@ioc:Adonis/Lucid/Database'
 import test from 'japa'
 import supertest from 'supertest'
@@ -23,7 +24,6 @@ test.group('User', (group) => {
     }
     const { body } = await supertest(BASE_URL).post('/users').send(userPayload).expect(201)
 
-    console.log({ body })
     assert.exists(body.user, 'User undefined.')
     assert.exists(body.user.id, 'Id undefined.')
     assert.equal(body.user.email, userPayload.email)
@@ -72,29 +72,60 @@ test.group('User', (group) => {
 
   test('it should return 422 when providing an invalid email', async (assert) => {
     const { body } = await supertest(BASE_URL)
-      .post('/users').send({
+      .post('/users')
+      .send({
         email: 'test@',
         password: 'test',
         username: 'test',
       })
       .expect(422)
 
-    console.log(JSON.stringify({ body }))
     assert.equal(body.code, 'BAD_REQUEST')
     assert.equal(body.status, 422)
   })
 
   test('it should return 422 when providing an invalid password', async (assert) => {
     const { body } = await supertest(BASE_URL)
-      .post('/users').send({
+      .post('/users')
+      .send({
         email: 'test@',
         password: 'tes',
         username: 'test',
       })
       .expect(422)
 
-    console.log(JSON.stringify({ body }))
     assert.equal(body.code, 'BAD_REQUEST')
     assert.equal(body.status, 422)
+  })
+
+  test('it should update an user', async (assert) => {
+    const { id, password } = await UserFactory.create()
+    const email = 'test@test.com'
+    const avatar = 'http://asdf.asdf.com/image.png'
+    const { body } = await supertest(BASE_URL).put(`/users/${id}`).send({
+      email,
+      avatar,
+      password,
+    })
+
+    assert.exists(body.user, 'User undefined.')
+    assert.equal(body.user.email, email)
+    assert.equal(body.user.avatar, avatar)
+    assert.equal(body.user.id, id)
+  })
+
+  test.only('it should update the password of user', async (assert) => {
+    const user = await UserFactory.create()
+    const password = 'test'
+    const { body } = await supertest(BASE_URL).put(`/users/${user.id}`).send({
+      email: user.email,
+      avatar: user.avatar,
+      password,
+    })
+
+    assert.exists(body.user, 'User undefined.')
+
+    await user.refresh()
+    assert.isTrue(await Hash.verify(user.password, password))
   })
 })
